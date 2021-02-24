@@ -1,0 +1,92 @@
+---
+title: "Site Map"
+author: ""
+date: ""
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      comment = FALSE)
+
+library(tidyverse)
+library(sf)
+library(mapview)
+
+
+```
+
+
+
+```{r, include = F}
+city <- st_read('data/sites/FCW_SamplingLocations.shp') %>%
+  mutate(operator = 'City') %>%
+  select(operator, Name)
+  
+kampf <- st_read('data/sites/KampfSamplingLocations.shp') %>%
+  mutate(operator = 'Kampf') %>%
+  select(operator, Name)
+
+rmrs <- st_read('data/sites/RMRS_StreamSamplingLocations.shp') %>%
+  mutate(operator = 'RMRS',
+         Name = paste0(1:nrow(.),'_Ash')) %>%
+  select(operator,Name)
+
+
+all_sites <- rbind(city,kampf,rmrs) %>%
+  arrange(operator)
+
+
+severe_fix <- tibble(Severity = c('None','Low','Moderate','High'),
+                     Burn = c('0_none','1_low','2_moderate','3_high'))
+
+simple_fire <- st_read('data/fire_sev_simple.gpkg') %>%
+  inner_join(severe_fix)
+
+flows <- st_read('data/flowlines.gpkg') 
+lakes <- st_read('data/relevant_lakes.gpkg')
+
+impacts <- tibble(Hylak_id = lakes$Hylak_id,
+                  Impact = c('Medium','Low','Medium',
+                             'Severe','Low','Severe')) 
+lakes <- inner_join(lakes,impacts) %>%
+  arrange(Impact)
+```
+
+
+The map below shows:
+
+1) Burn severity
+2) Reservoirs of interest for reservoir study
+3) River sites that are being studied. The City and Kampf sites will not be moved. 
+
+All layers can be turned on and off, by highlighting the stacked squares on the left. 
+
+```{r}
+mapview(simple_fire, zcol = 'Burn', layer.name = 'Burn Severity',
+        col.regions = grey.colors(4, start = 0.8,end=0),
+        homebutton = F) +
+mapview(flows, 
+        layer.name = 'rivers',
+        color = 'darkblue', 
+        legend = F, 
+        homebutton = F,
+        alpha = 0.4) + 
+mapview(lakes, 
+        zcol = 'Impact', 
+        layer.name = 'Reservoirs',
+        homebutton = F,
+        col.regions = c('#e7d4e8','#af8dc3','#762a83')) +
+mapview(all_sites, zcol='operator',
+        layer.name = 'River sites', 
+        homebutton = F,
+        col.regions = c('#d9f0d3','#5aae61','#00441b'))
+
+
+
+```
+
+
+
